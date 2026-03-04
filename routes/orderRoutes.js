@@ -104,7 +104,7 @@ router.post('/', protect, async (req, res) => {
           : 'N/A';
 
         const text = [
-          `A new order has been placed on Sweech.`,
+          `A new order has been placed on CaseProz.`,
           ``,
           `Order ID: ${createdOrder._id}`,
           user ? `Customer: ${user.name} <${user.email}>` : '',
@@ -135,13 +135,13 @@ router.post('/', protect, async (req, res) => {
           <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; background-color: #f5f5f5; padding: 24px;">
             <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; border: 1px solid #e5e5e5;">
               <div style="background: linear-gradient(135deg, #111827, #1f2937); padding: 16px 24px;">
-                <h1 style="margin: 0; font-size: 20px; color: #ffffff;">Sweech - New Order</h1>
+                <h1 style="margin: 0; font-size: 20px; color: #ffffff;">CaseProz - New Order</h1>
                 <p style="margin: 4px 0 0; font-size: 13px; color: #d1d5db;">Order ID: ${createdOrder._id}</p>
               </div>
 
               <div style="padding: 20px 24px;">
                 <p style="margin: 0 0 12px; font-size: 14px; color: #111827;">
-                  A new order has been placed on <strong>Sweech</strong>.
+                  A new order has been placed on <strong>CaseProz</strong>.
                 </p>
 
                 ${
@@ -176,7 +176,7 @@ router.post('/', protect, async (req, res) => {
                 </p>
 
                 <p style="margin: 16px 0 0; font-size: 12px; color: #9ca3af;">
-                  You’re receiving this email because an order was placed on Sweech.
+                  You’re receiving this email because an order was placed on CaseProz.
                 </p>
               </div>
             </div>

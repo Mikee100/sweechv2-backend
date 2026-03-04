@@ -9,7 +9,7 @@ const register = async () => {
             },
             body: JSON.stringify({
                 name: 'Admin User',
-                email: 'admin@sweech.co.ke',
+                email: 'admin@caseproz.co.ke',
                 password: 'password123'
             })
         });
