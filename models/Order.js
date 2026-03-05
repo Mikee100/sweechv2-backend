@@ -18,6 +18,23 @@ const orderSchema = mongoose.Schema(
       postalCode: { type: String, required: true },
       country: { type: String, required: true },
     },
+    status: {
+      type: String,
+      enum: ['pending', 'confirmed', 'processing', 'dispatched', 'in_transit', 'out_for_delivery', 'delivered', 'cancelled'],
+      default: 'pending',
+    },
+    trackingNumber: { type: String },
+    carrier: { type: String },
+    statusHistory: [
+      {
+        status: {
+          type: String,
+          enum: ['pending', 'confirmed', 'processing', 'dispatched', 'in_transit', 'out_for_delivery', 'delivered', 'cancelled'],
+        },
+        note: { type: String },
+        updatedAt: { type: Date, default: Date.now },
+      },
+    ],
     paymentMethod: { type: String, required: true },
     paymentResult: {
       id: { type: String },

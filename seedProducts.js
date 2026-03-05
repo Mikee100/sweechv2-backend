@@ -859,11 +859,258 @@ const products = [
   }
 ];
 
+// Generate an extra 100 generic products to enrich the catalog
+const extraProducts = Array.from({ length: 100 }).map((_, index) => {
+  const n = index + 1;
+  const basePrice = 5000 + n * 200;
+
+  return {
+    name: `Sample Gadget ${n}`,
+    slug: `sample-gadget-${n}`,
+    description:
+      'Sample gadget product used to enrich the CaseProz catalog. You can later edit or replace these from the admin panel.',
+    price: basePrice,
+    originalPrice: basePrice + 1000,
+    category: 'Accessories',
+    subCategory: 'Sample Gadgets',
+    images: ['https://via.placeholder.com/800x800.png?text=Sample+Gadget'],
+    stock: 10 + (n % 20),
+    onSale: n % 3 === 0,
+    specs: [
+      { key: 'Sample Spec', value: `Variant #${n}` },
+      { key: 'Warranty', value: '12 Months' },
+    ],
+  };
+});
+
+// Generate another 100 products spread across many categories
+const extraCategoryConfigs = [
+  { category: 'Apple', subCategory: 'iPhone' },
+  { category: 'Apple', subCategory: 'MacBook' },
+  { category: 'Apple', subCategory: 'iPad' },
+  { category: 'Apple', subCategory: 'Audio' },
+  { category: 'Laptops', subCategory: 'Dell' },
+  { category: 'Laptops', subCategory: 'ASUS' },
+  { category: 'Laptops', subCategory: 'HP' },
+  { category: 'Laptops', subCategory: 'Lenovo' },
+  { category: 'Smartphones', subCategory: 'Samsung' },
+  { category: 'Smartphones', subCategory: 'Google' },
+  { category: 'Smartphones', subCategory: 'E-readers' },
+  { category: 'Gaming', subCategory: 'Consoles' },
+  { category: 'Gaming', subCategory: 'Accessories' },
+  { category: 'Gaming', subCategory: 'Audio' },
+  { category: 'Cameras & Drones', subCategory: 'Cameras' },
+  { category: 'Cameras & Drones', subCategory: 'Drones' },
+  { category: 'Audio & Music', subCategory: 'Headphones' },
+  { category: 'Audio & Music', subCategory: 'Speakers' },
+  { category: 'Audio & Music', subCategory: 'Microphones' },
+  { category: 'Wearables', subCategory: 'Apple Watch' },
+  { category: 'Wearables', subCategory: 'Samsung Watch' },
+  { category: 'Wearables', subCategory: 'Sports Watch' },
+  { category: 'Storage', subCategory: 'Samsung' },
+  { category: 'Storage', subCategory: 'SSD' },
+  { category: 'Accessories', subCategory: 'Peripherals' },
+  { category: 'Accessories', subCategory: 'Power' },
+  { category: 'Accessories', subCategory: 'Streaming' },
+  { category: 'PC Parts', subCategory: 'Power Supply' },
+  { category: 'PC Parts', subCategory: 'Cooling' },
+  { category: 'TV & Home Theatre', subCategory: 'Television' },
+  { category: 'Smart Home', subCategory: 'Lighting' },
+  { category: 'Smart Home', subCategory: 'Security' },
+  { category: 'Smart Home', subCategory: 'Appliances' },
+  { category: 'Home Appliances', subCategory: 'Cleaning' },
+  { category: 'Home Appliances', subCategory: 'Kitchen' },
+];
+
+const extraCategoryProducts = Array.from({ length: 100 }).map((_, index) => {
+  const n = index + 1;
+  const basePrice = 8000 + n * 250;
+  const cfg = extraCategoryConfigs[index % extraCategoryConfigs.length];
+
+  return {
+    name: `${cfg.category} Special ${n}`,
+    slug: `${cfg.category.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${cfg.subCategory
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')}-special-${n}`,
+    description: `Extra seeded product for category ${cfg.category} / ${cfg.subCategory}. This keeps all categories well-populated for browsing and testing.`,
+    price: basePrice,
+    originalPrice: basePrice + 1500,
+    category: cfg.category,
+    subCategory: cfg.subCategory,
+    images: ['https://via.placeholder.com/800x800.png?text=Category+Product'],
+    stock: 5 + (n % 15),
+    onSale: n % 4 === 0,
+    specs: [
+      { key: 'Category', value: cfg.category },
+      { key: 'Subcategory', value: cfg.subCategory },
+    ],
+  };
+});
+
+// Products aligned with frontend CATEGORIES (Computers & Laptops, Phones & Tablets, etc.)
+const uiCategoryPairs = [
+  // Computers & Laptops
+  { category: 'Computers & Laptops', subCategory: 'Laptops' },
+  { category: 'Computers & Laptops', subCategory: 'Desktops' },
+  { category: 'Computers & Laptops', subCategory: 'Monitors' },
+  { category: 'Computers & Laptops', subCategory: 'Printers & Scanners' },
+  { category: 'Computers & Laptops', subCategory: 'Networking Equipment' },
+  { category: 'Computers & Laptops', subCategory: 'Storage Devices' },
+  // Phones & Tablets
+  { category: 'Phones & Tablets', subCategory: 'Smartphones' },
+  { category: 'Phones & Tablets', subCategory: 'Tablets' },
+  { category: 'Phones & Tablets', subCategory: 'iPhones' },
+  { category: 'Phones & Tablets', subCategory: 'iPads' },
+  { category: 'Phones & Tablets', subCategory: 'Phone Accessories' },
+  // Audio & Headphones
+  { category: 'Audio & Headphones', subCategory: 'Bluetooth Speakers' },
+  { category: 'Audio & Headphones', subCategory: 'Earbuds & In-ear' },
+  { category: 'Audio & Headphones', subCategory: 'Over-ear Headphones' },
+  { category: 'Audio & Headphones', subCategory: 'Home Audio Systems' },
+  { category: 'Audio & Headphones', subCategory: 'Microphones' },
+  // Power & Solar
+  { category: 'Power & Solar', subCategory: 'Portable Power Stations' },
+  { category: 'Power & Solar', subCategory: 'Solar Panels' },
+  { category: 'Power & Solar', subCategory: 'Power Banks' },
+  { category: 'Power & Solar', subCategory: 'UPS & Inverters' },
+  { category: 'Power & Solar', subCategory: 'Batteries' },
+  // Smart Home
+  { category: 'Smart Home', subCategory: 'Security Cameras' },
+  { category: 'Smart Home', subCategory: 'Smart Lighting' },
+  { category: 'Smart Home', subCategory: 'Smart Plugs' },
+  { category: 'Smart Home', subCategory: 'Home Automation' },
+  // Gaming
+  { category: 'Gaming', subCategory: 'Consoles' },
+  { category: 'Gaming', subCategory: 'Gaming Laptops' },
+  { category: 'Gaming', subCategory: 'Gaming Accessories' },
+  { category: 'Gaming', subCategory: 'Games' },
+  // Photography & Video
+  { category: 'Photography & Video', subCategory: 'Cameras' },
+  { category: 'Photography & Video', subCategory: 'Lenses' },
+  { category: 'Photography & Video', subCategory: 'Gimbals & Stabilizers' },
+  { category: 'Photography & Video', subCategory: 'Photography Accessories' },
+  // Accessories
+  { category: 'Accessories', subCategory: 'Cables & Adapters' },
+  { category: 'Accessories', subCategory: 'Cases & Covers' },
+  { category: 'Accessories', subCategory: 'Keyboard & Mouse' },
+  { category: 'Accessories', subCategory: 'Laptop Bags' },
+];
+
+const uiCategoryProducts = uiCategoryPairs.map((cfg, index) => {
+  const n = index + 1;
+  const basePrice = 9000 + n * 180;
+
+  return {
+    name: `${cfg.subCategory} Deal ${n}`,
+    slug: `${cfg.category.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${cfg.subCategory
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')}-deal-${n}`,
+    description: `Auto-seeded product for storefront category "${cfg.category}" and subcategory "${cfg.subCategory}". This ensures every visible category has at least one product.`,
+    price: basePrice,
+    originalPrice: basePrice + 1200,
+    category: cfg.category,
+    subCategory: cfg.subCategory,
+    images: ['https://via.placeholder.com/800x800.png?text=Category+Item'],
+    stock: 8 + (n % 10),
+    onSale: n % 2 === 0,
+    specs: [
+      { key: 'Category', value: cfg.category },
+      { key: 'Subcategory', value: cfg.subCategory },
+    ],
+  };
+});
+
+// Generate an additional ~300 products distributed across all UI categories/subcategories
+const EXTRA_UI_CATEGORY_COUNT = 300;
+
+const extraUiCategoryProducts = Array.from({ length: EXTRA_UI_CATEGORY_COUNT }).map((_, index) => {
+  const cfg = uiCategoryPairs[index % uiCategoryPairs.length];
+  // Offset n so slugs stay unique from the original uiCategoryProducts
+  const n = uiCategoryPairs.length + index + 1;
+  const basePrice = 9500 + n * 160;
+
+  return {
+    name: `${cfg.subCategory} Collection ${n}`,
+    slug: `${cfg.category.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${cfg.subCategory
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')}-collection-${n}`,
+    description: `Additional auto-seeded product for storefront category "${cfg.category}" and subcategory "${cfg.subCategory}". Generated to keep this sub-category richly populated for browsing and testing.`,
+    price: basePrice,
+    originalPrice: basePrice + 1400,
+    category: cfg.category,
+    subCategory: cfg.subCategory,
+    images: ['https://via.placeholder.com/800x800.png?text=Extra+Category+Item'],
+    stock: 6 + (n % 12),
+    onSale: n % 3 === 0,
+    specs: [
+      { key: 'Category', value: cfg.category },
+      { key: 'Subcategory', value: cfg.subCategory },
+    ],
+  };
+});
+
+// Ensure Accessories subcategories each have multiple products
+const accessoriesSubCategories = [
+  'Cables & Adapters',
+  'Cases & Covers',
+  'Keyboard & Mouse',
+  'Laptop Bags',
+];
+
+const accessoriesSubProducts = accessoriesSubCategories.flatMap((sub, subIndex) =>
+  Array.from({ length: 6 }).map((_, idx) => {
+    const n = idx + 1;
+    const basePrice = 3500 + subIndex * 400 + n * 120;
+
+    return {
+      name: `${sub} Bundle ${n}`,
+      slug: `accessories-${sub
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')}-bundle-${n}`,
+      description: `Seeded accessory product for "${sub}" so this sub-category always has items to browse.`,
+      price: basePrice,
+      originalPrice: basePrice + 800,
+      category: 'Accessories',
+      subCategory: sub,
+      images: ['https://via.placeholder.com/800x800.png?text=Accessories'],
+      stock: 12 + ((subIndex + n) % 10),
+      onSale: n % 3 === 0,
+      specs: [
+        { key: 'Category', value: 'Accessories' },
+        { key: 'Subcategory', value: sub },
+      ],
+    };
+  })
+);
+
+const allProducts = [
+  ...products,
+  ...extraProducts,
+  ...extraCategoryProducts,
+  ...uiCategoryProducts,
+  ...accessoriesSubProducts,
+  ...extraUiCategoryProducts,
+];
+
 const seedData = async () => {
   try {
-    await Product.deleteMany();
-    await Product.insertMany(products);
-    console.log('Data Imported!');
+    // Only insert products that are not already in the database (by slug)
+    const existing = await Product.find({}, 'slug');
+    const existingSlugs = new Set(existing.map((p) => p.slug));
+
+    const newProducts = allProducts.filter((p) => !existingSlugs.has(p.slug));
+
+    if (newProducts.length === 0) {
+      console.log(
+        'No new products to import. Existing catalog already contains all seeded items.'
+      );
+      process.exit();
+    }
+
+    await Product.insertMany(newProducts);
+    console.log(
+      `Data Imported! Added ${newProducts.length} new products (total defined: ${allProducts.length}).`
+    );
     process.exit();
   } catch (error) {
     console.error(`${error}`);

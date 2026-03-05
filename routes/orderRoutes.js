@@ -3,8 +3,19 @@ const router = express.Router();
 const Order = require('../models/Order');
 const User = require('../models/User');
 const Product = require('../models/Product');
-const { protect } = require('../middleware/authMiddleware');
+const { protect, admin } = require('../middleware/authMiddleware');
 const sendEmail = require('../utils/sendEmail');
+
+const VALID_STATUSES = [
+  'pending',
+  'confirmed',
+  'processing',
+  'dispatched',
+  'in_transit',
+  'out_for_delivery',
+  'delivered',
+  'cancelled',
+];
 
 // @desc    Create new order
 // @route   POST /api/orders
@@ -59,6 +70,13 @@ router.post('/', protect, async (req, res) => {
       user: req.user._id,
       shippingAddress,
       paymentMethod,
+      status: 'pending',
+      statusHistory: [
+        {
+          status: 'pending',
+          note: 'Order placed',
+        },
+      ],
       itemsPrice,
       taxPrice,
       shippingPrice,
@@ -217,6 +235,82 @@ router.get('/:id', protect, async (req, res) => {
   } else {
     res.status(404).json({ message: 'Order not found' });
   }
+});
+
+// @desc    Get all orders
+// @route   GET /api/orders
+// @access  Private/Admin
+router.get('/', protect, admin, async (req, res) => {
+  const orders = await Order.find({}).populate('user', 'id name');
+  res.json(orders);
+});
+
+// @desc    Update order to delivered
+// @route   PUT /api/orders/:id/deliver
+// @access  Private/Admin
+router.put('/:id/deliver', protect, admin, async (req, res) => {
+  const order = await Order.findById(req.params.id);
+
+  if (order) {
+    order.isDelivered = true;
+    order.deliveredAt = Date.now();
+    order.status = 'delivered';
+    order.statusHistory = order.statusHistory || [];
+    order.statusHistory.push({
+      status: 'delivered',
+      note: 'Order marked as delivered',
+      updatedAt: new Date(),
+    });
+
+    const updatedOrder = await order.save();
+
+    res.json(updatedOrder);
+  } else {
+    res.status(404).json({ message: 'Order not found' });
+  }
+});
+
+// @desc    Update order status / tracking
+// @route   PUT /api/orders/:id/status
+// @access  Private/Admin
+router.put('/:id/status', protect, admin, async (req, res) => {
+  const { status, trackingNumber, carrier, note } = req.body;
+
+  if (!status || !VALID_STATUSES.includes(status)) {
+    return res.status(400).json({ message: 'Invalid or missing status value' });
+  }
+
+  const order = await Order.findById(req.params.id);
+
+  if (!order) {
+    return res.status(404).json({ message: 'Order not found' });
+  }
+
+  order.status = status;
+
+  if (trackingNumber !== undefined) {
+    order.trackingNumber = trackingNumber;
+  }
+
+  if (carrier !== undefined) {
+    order.carrier = carrier;
+  }
+
+  order.statusHistory = order.statusHistory || [];
+  order.statusHistory.push({
+    status,
+    note: note || undefined,
+    updatedAt: new Date(),
+  });
+
+  if (status === 'delivered') {
+    order.isDelivered = true;
+    order.deliveredAt = new Date();
+  }
+
+  const updatedOrder = await order.save();
+
+  res.json(updatedOrder);
 });
 
 module.exports = router;
