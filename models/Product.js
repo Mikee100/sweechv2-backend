@@ -15,6 +15,16 @@ const productSchema = mongoose.Schema(
     onSale: { type: Boolean, default: false },
     keyFeatures: [{ type: String }],
     specs: [{ key: String, value: String }],
+    sku: { type: String },
+    brand: { type: String },
+    // Variant grouping (e.g. Liberty 5 White/Black)
+    variantGroup: { type: String },
+    variantLabel: { type: String },
+    // Extra taxonomy used for product footer like "Valentine's Day Gifts"
+    categories: [{ type: String }],
+    featureHeadline: { type: String },
+    featureSubtext: { type: String },
+    notes: [{ type: String }],
   },
   {
     timestamps: true,

@@ -501,6 +501,55 @@ const products = [
     ]
   },
   {
+    name: 'EcoFlow DELTA 2 BLACK E980 – Portable Power Station (500W, 980Wh) with FREE GIFTS – EFE980-UK',
+    slug: 'ecoflow-delta-2-black-e980-efe980-uk',
+    description:
+      'Experience premium portable power with the EcoFlow DELTA 2 BLACK E980. With a 980Wh LFP battery, 500W output (650W X-Boost), and ultra-fast 0–100% charging in 2 hours, it is built for backup, camping, and everyday use.',
+    price: 63800,
+    originalPrice: 84999,
+    category: 'Power & Solar',
+    subCategory: 'Portable Power Stations',
+    images: [
+      'https://sweech.co.ke/wp-content/uploads/2025/01/EcoFlow-DELTA-2-BLACK-E980-Portable-Power-Station-EFE980-UK-01.jpg'
+    ],
+    stock: 5,
+    onSale: true,
+    sku: '5020001004',
+    brand: 'EcoFlow',
+    variantGroup: 'ecoflow-delta-2-e980',
+    variantLabel: 'Black',
+    categories: ['Ecoflow Power Stations', 'Power Stations'],
+    keyFeatures: [
+      'Sizeable 980Wh capacity and 500W output.',
+      'Battery Type: LFP (LiFePO4), 3,000 life cycles to 80% capacity.',
+      'Recharge 0–100% in just 2 hours.',
+      'Safest LFP battery provides 10 years of use.',
+      'X-Boost output up to 650W.',
+      '4 ways to charge: AC, car, solar, and USB‑C.',
+      '<30ms EPS auto-switch for essential devices.',
+      'Smart app control & LCD screen.'
+    ],
+    specs: [
+      { key: 'Battery Capacity', value: '980Wh' },
+      { key: 'Battery Type', value: 'LFP (LiFePO4), 3000+ cycles to 80%' },
+      { key: 'AC Output', value: '500W (4× 230V UK sockets), X‑Boost 650W' },
+      { key: 'USB-A', value: '2 × 12W, 2 × 18W (Fast Charge)' },
+      { key: 'USB-C', value: '2 × 100W Max' },
+      { key: 'Car Power Output', value: '12.6V, 10A, 126W Max' },
+      { key: 'DC 5521 Output', value: '2 × 12.6V, 3A, 38W Max per port' },
+      { key: 'AC Charging', value: '220–240V, 0–100% in 2 hours' },
+      { key: 'Solar Charging', value: '11–60V, 15A, 500W Max, 0–100% in 2.9 hours' },
+      { key: 'Car Charging', value: '12V/24V, 8A, 0–100% in 11 hours' },
+      { key: 'Weight', value: '12kg' },
+      { key: 'Dimensions', value: '40 × 21 × 28 cm' }
+    ],
+    notes: [
+      '2 Year Limited Warranty. Warranty becomes null and void from user damage, using other brand solar panels, electrical & power surges or power related issues.',
+      'Warranty becomes null and void if other brand solar panels are used instead of EcoFlow Solar Panels to recharge EcoFlow Portable Power Stations.',
+      'Package includes: EcoFlow E980, AC charging cable (Type B power adapter), car charging cable, DC5521 connection cable, quick start guide, FREE EcoFlow RAPID Magnetic Power Bank (5000mAh, 15W), FREE 6-in-1 Multifunctional Fan.'
+    ]
+  },
+  {
     name: 'Keychron Q1 Pro Wireless Mechanical Keyboard',
     slug: 'keychron-q1-pro-keyboard',
     description: 'A fully customizable wireless mechanical keyboard. Built with a CNC-milled aluminum body, hot-swappable switches, and QMK/VIA support.',

@@ -54,6 +54,7 @@ router.get('/', async (req, res) => {
     const category = req.query.category;
     const subCategory = req.query.subCategory;
     const brand = req.query.brand;
+    const variantGroup = req.query.variantGroup;
     const minPrice = req.query.minPrice ? Number(req.query.minPrice) : undefined;
     const maxPrice = req.query.maxPrice ? Number(req.query.maxPrice) : undefined;
 
@@ -84,6 +85,10 @@ router.get('/', async (req, res) => {
 
     if (subCategory) {
       baseQuery = { ...baseQuery, subCategory };
+    }
+
+    if (variantGroup) {
+      baseQuery = { ...baseQuery, variantGroup };
     }
 
     if (minPrice !== undefined || maxPrice !== undefined) {
@@ -184,7 +189,7 @@ router.get('/:slug', async (req, res) => {
 // @access  Private/Admin
 router.post('/', protect, admin, async (req, res) => {
   try {
-    const { name, slug, description, price, originalPrice, category, subCategory, images, stock, specs, isFeatured, onSale } = req.body;
+    const { name, slug, description, price, originalPrice, category, subCategory, images, stock, specs, isFeatured, onSale, keyFeatures, sku, brand, variantGroup, variantLabel, categories, featureHeadline, featureSubtext, notes } = req.body;
     
     const product = new Product({
       name,
@@ -198,7 +203,16 @@ router.post('/', protect, admin, async (req, res) => {
       stock,
       specs,
       isFeatured,
-      onSale
+      onSale,
+      keyFeatures,
+      sku,
+      brand,
+      variantGroup,
+      variantLabel,
+      categories,
+      featureHeadline,
+      featureSubtext,
+      notes,
     });
 
     const createdProduct = await product.save();
@@ -214,7 +228,7 @@ router.post('/', protect, admin, async (req, res) => {
 // @access  Private/Admin
 router.put('/:id', protect, admin, async (req, res) => {
   try {
-    const { name, slug, description, price, originalPrice, category, subCategory, images, stock, specs, isFeatured, onSale } = req.body;
+    const { name, slug, description, price, originalPrice, category, subCategory, images, stock, specs, isFeatured, onSale, keyFeatures, sku, brand, variantGroup, variantLabel, categories, featureHeadline, featureSubtext, notes } = req.body;
     const product = await Product.findById(req.params.id);
 
     if (product) {
@@ -230,6 +244,15 @@ router.put('/:id', protect, admin, async (req, res) => {
       product.specs = specs || product.specs;
       product.isFeatured = isFeatured !== undefined ? isFeatured : product.isFeatured;
       product.onSale = onSale !== undefined ? onSale : product.onSale;
+      if (keyFeatures !== undefined) product.keyFeatures = keyFeatures;
+      if (sku !== undefined) product.sku = sku;
+      if (brand !== undefined) product.brand = brand;
+      if (variantGroup !== undefined) product.variantGroup = variantGroup;
+      if (variantLabel !== undefined) product.variantLabel = variantLabel;
+      if (categories !== undefined) product.categories = categories;
+      if (featureHeadline !== undefined) product.featureHeadline = featureHeadline;
+      if (featureSubtext !== undefined) product.featureSubtext = featureSubtext;
+      if (notes !== undefined) product.notes = notes;
 
       const updatedProduct = await product.save();
       invalidateProductsCache();
