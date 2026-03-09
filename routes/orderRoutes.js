@@ -95,6 +95,8 @@ router.post('/', protect, async (req, res) => {
     taxPrice,
     shippingPrice,
     totalPrice,
+    discountCode,
+    discountAmount,
   } = req.body;
 
   if (orderItems && orderItems.length === 0) {
@@ -147,6 +149,8 @@ router.post('/', protect, async (req, res) => {
       taxPrice,
       shippingPrice,
       totalPrice,
+      discountCode,
+      discountAmount,
     });
 
     const createdOrder = await order.save();

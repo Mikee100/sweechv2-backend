@@ -14,6 +14,8 @@ const userRoutes = require('./routes/userRoutes');
 const orderRoutes = require('./routes/orderRoutes');
 const uploadRoutes = require('./routes/uploadRoutes');
 const analyticsRoutes = require('./routes/analyticsRoutes');
+const siteConfigRoutes = require('./routes/siteConfigRoutes');
+const discountRoutes = require('./routes/discountRoutes');
 const path = require('path');
 
 const app = express();
@@ -26,6 +28,8 @@ app.use('/api/users', userRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api/analytics', analyticsRoutes);
+app.use('/api/site-config', siteConfigRoutes);
+app.use('/api/discounts', discountRoutes);
 
 app.use('/uploads', express.static(path.join(__dirname, '/uploads')));
 
