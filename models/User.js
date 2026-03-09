@@ -7,6 +7,15 @@ const userSchema = mongoose.Schema(
     email: { type: String, required: true, unique: true },
     password: { type: String, required: true },
     isAdmin: { type: Boolean, required: true, default: false },
+    // Role-based access for admin area
+    role: {
+      type: String,
+      enum: ['CUSTOMER', 'SUPER_ADMIN', 'MANAGER', 'SUPPORT'],
+      default: 'CUSTOMER',
+    },
+    // Simple notes/tags used in admin for user management
+    notes: { type: String },
+    tags: [{ type: String }],
     favourites: [
       {
         type: mongoose.Schema.Types.ObjectId,

@@ -17,6 +17,72 @@ const VALID_STATUSES = [
   'cancelled',
 ];
 
+// Helper to build a Mongo query object from common admin filter params
+const buildOrderAdminQuery = async (req) => {
+  const {
+    status,
+    from,
+    to,
+    email,
+    paymentMethod,
+    minTotal,
+    maxTotal,
+  } = req.query;
+
+  const filter = {};
+
+  if (status) {
+    filter.status = status;
+  }
+
+  if (paymentMethod) {
+    filter.paymentMethod = paymentMethod;
+  }
+
+  if (minTotal || maxTotal) {
+    filter.totalPrice = {};
+    if (minTotal) {
+      filter.totalPrice.$gte = Number(minTotal);
+    }
+    if (maxTotal) {
+      filter.totalPrice.$lte = Number(maxTotal);
+    }
+  }
+
+  if (from || to) {
+    filter.createdAt = {};
+    if (from) {
+      filter.createdAt.$gte = new Date(from);
+    }
+    if (to) {
+      // Include the entire end day by setting to end of day if date-only string
+      const toDate = new Date(to);
+      if (!Number.isNaN(toDate.getTime())) {
+        toDate.setHours(23, 59, 59, 999);
+        filter.createdAt.$lte = toDate;
+      }
+    }
+  }
+
+  // Filter by customer email (case-insensitive)
+  if (email) {
+    const users = await User.find({
+      email: { $regex: email, $options: 'i' },
+    }).select('_id');
+
+    const userIds = users.map((u) => u._id);
+
+    if (!userIds.length) {
+      // No matching users: ensure query returns empty set
+      filter.user = { $in: [] };
+    } else {
+      filter.user = { $in: userIds };
+    }
+  }
+
+  return filter;
+};
+
 // @desc    Create new order
 // @route   POST /api/orders
 // @access  Private
@@ -237,12 +303,21 @@ router.get('/:id', protect, async (req, res) => {
   }
 });
 
-// @desc    Get all orders
+// @desc    Get all orders (with optional filters for admin)
 // @route   GET /api/orders
 // @access  Private/Admin
 router.get('/', protect, admin, async (req, res) => {
-  const orders = await Order.find({}).populate('user', 'id name');
-  res.json(orders);
+  try {
+    const filter = await buildOrderAdminQuery(req);
+    const orders = await Order.find(filter)
+      .sort({ createdAt: -1 })
+      .populate('user', 'id name email');
+
+    res.json(orders);
+  } catch (error) {
+    console.error('Failed to fetch admin orders:', error);
+    res.status(500).json({ message: 'Failed to fetch orders' });
+  }
 });
 
 // @desc    Update order to delivered
@@ -311,6 +386,121 @@ router.put('/:id/status', protect, admin, async (req, res) => {
   const updatedOrder = await order.save();
 
   res.json(updatedOrder);
+});
+
+// @desc    Bulk update order status
+// @route   PUT /api/orders/bulk/status
+// @access  Private/Admin
+router.put('/bulk/status', protect, admin, async (req, res) => {
+  const { orderIds, status, note } = req.body;
+
+  if (!Array.isArray(orderIds) || orderIds.length === 0) {
+    return res.status(400).json({ message: 'orderIds array is required' });
+  }
+
+  if (!status || !VALID_STATUSES.includes(status)) {
+    return res.status(400).json({ message: 'Invalid or missing status value' });
+  }
+
+  try {
+    const orders = await Order.find({ _id: { $in: orderIds } });
+
+    const now = new Date();
+    const statusEntry = {
+      status,
+      note: note || undefined,
+      updatedAt: now,
+    };
+
+    for (const order of orders) {
+      order.status = status;
+      order.statusHistory = order.statusHistory || [];
+      order.statusHistory.push(statusEntry);
+
+      if (status === 'delivered') {
+        order.isDelivered = true;
+        order.deliveredAt = now;
+      }
+    }
+
+    const updatedOrders = await Promise.all(orders.map((o) => o.save()));
+
+    res.json({
+      updatedCount: updatedOrders.length,
+      orders: updatedOrders,
+    });
+  } catch (error) {
+    console.error('Failed to bulk update order status:', error);
+    res.status(500).json({ message: 'Failed to bulk update order status' });
+  }
+});
+
+// @desc    Export orders as CSV (respects same filters as GET /api/orders)
+// @route   GET /api/orders/export
+// @access  Private/Admin
+router.get('/export', protect, admin, async (req, res) => {
+  try {
+    const filter = await buildOrderAdminQuery(req);
+    const orders = await Order.find(filter)
+      .sort({ createdAt: -1 })
+      .populate('user', 'name email');
+
+    const header = [
+      'Order ID',
+      'Created At',
+      'Customer Name',
+      'Customer Email',
+      'Status',
+      'Payment Method',
+      'Items Total',
+      'Shipping',
+      'Tax',
+      'Total',
+      'Paid',
+      'Delivered',
+    ];
+
+    const escapeCsv = (value) => {
+      if (value === null || value === undefined) return '';
+      const str = String(value);
+      if (str.includes('"') || str.includes(',') || str.includes('\n')) {
+        return `"${str.replace(/"/g, '""')}"`;
+      }
+      return str;
+    };
+
+    const rows = orders.map((order) => [
+      order._id,
+      order.createdAt ? order.createdAt.toISOString() : '',
+      order.user && order.user.name ? order.user.name : '',
+      order.user && order.user.email ? order.user.email : '',
+      order.status || '',
+      order.paymentMethod || '',
+      order.itemsPrice != null ? order.itemsPrice : '',
+      order.shippingPrice != null ? order.shippingPrice : '',
+      order.taxPrice != null ? order.taxPrice : '',
+      order.totalPrice != null ? order.totalPrice : '',
+      order.isPaid ? 'Yes' : 'No',
+      order.isDelivered ? 'Yes' : 'No',
+    ]);
+
+    const csvLines = [
+      header.map(escapeCsv).join(','),
+      ...rows.map((row) => row.map(escapeCsv).join(',')),
+    ];
+
+    const csvContent = csvLines.join('\n');
+
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader(
+      'Content-Disposition',
+      'attachment; filename="orders-export.csv"'
+    );
+    res.send(csvContent);
+  } catch (error) {
+    console.error('Failed to export orders CSV:', error);
+    res.status(500).json({ message: 'Failed to export orders' });
+  }
 });
 
 module.exports = router;

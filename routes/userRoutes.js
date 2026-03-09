@@ -18,6 +18,7 @@ router.post('/login', async (req, res) => {
       name: user.name,
       email: user.email,
       isAdmin: user.isAdmin,
+      role: user.role || (user.isAdmin ? 'MANAGER' : 'CUSTOMER'),
       token: generateToken(user._id),
     });
   } else {
@@ -50,6 +51,7 @@ router.post('/', async (req, res) => {
       name: user.name,
       email: user.email,
       isAdmin: user.isAdmin,
+      role: user.role || (user.isAdmin ? 'MANAGER' : 'CUSTOMER'),
       token: generateToken(user._id),
     });
   } else {
@@ -69,6 +71,7 @@ router.get('/profile', protect, async (req, res) => {
       name: user.name,
       email: user.email,
       isAdmin: user.isAdmin,
+      role: user.role || (user.isAdmin ? 'MANAGER' : 'CUSTOMER'),
     });
   } else {
     res.status(404).json({ message: 'User not found' });
@@ -99,6 +102,7 @@ router.put('/profile', protect, async (req, res) => {
     name: updatedUser.name,
     email: updatedUser.email,
     isAdmin: updatedUser.isAdmin,
+    role: updatedUser.role || (updatedUser.isAdmin ? 'MANAGER' : 'CUSTOMER'),
     token: generateToken(updatedUser._id),
   });
 });
@@ -196,9 +200,39 @@ router.put('/:id', protect, admin, async (req, res) => {
   const user = await User.findById(req.params.id);
 
   if (user) {
-    user.name = req.body.name || user.name;
-    user.email = req.body.email || user.email;
-    user.isAdmin = req.body.isAdmin !== undefined ? req.body.isAdmin : user.isAdmin;
+    const {
+      name,
+      email,
+      isAdmin,
+      role,
+      notes,
+      tags,
+    } = req.body;
+
+    user.name = name || user.name;
+    user.email = email || user.email;
+
+    if (typeof isAdmin === 'boolean') {
+      user.isAdmin = isAdmin;
+    }
+
+    if (role) {
+      user.role = role;
+      // Keep boolean in sync for admin-only routes
+      if (role === 'CUSTOMER') {
+        user.isAdmin = false;
+      } else if (!user.isAdmin) {
+        user.isAdmin = true;
+      }
+    }
+
+    if (notes !== undefined) {
+      user.notes = notes;
+    }
+
+    if (Array.isArray(tags)) {
+      user.tags = tags;
+    }
 
     const updatedUser = await user.save();
 
@@ -207,6 +241,9 @@ router.put('/:id', protect, admin, async (req, res) => {
       name: updatedUser.name,
       email: updatedUser.email,
       isAdmin: updatedUser.isAdmin,
+      role: updatedUser.role || (updatedUser.isAdmin ? 'MANAGER' : 'CUSTOMER'),
+      notes: updatedUser.notes || '',
+      tags: updatedUser.tags || [],
     });
   } else {
     res.status(404).json({ message: 'User not found' });

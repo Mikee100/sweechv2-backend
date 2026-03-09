@@ -189,8 +189,33 @@ router.get('/:slug', async (req, res) => {
 // @access  Private/Admin
 router.post('/', protect, admin, async (req, res) => {
   try {
-    const { name, slug, description, price, originalPrice, category, subCategory, images, stock, specs, isFeatured, onSale, keyFeatures, sku, brand, variantGroup, variantLabel, categories, featureHeadline, featureSubtext, notes } = req.body;
-    
+    const {
+      name,
+      slug,
+      description,
+      price,
+      originalPrice,
+      category,
+      subCategory,
+      images,
+      stock,
+      specs,
+      isFeatured,
+      onSale,
+      isActive,
+      keyFeatures,
+      sku,
+      brand,
+      variantGroup,
+      variantLabel,
+      categories,
+      featureHeadline,
+      featureSubtext,
+      notes,
+      metaTitle,
+      metaDescription,
+    } = req.body;
+
     const product = new Product({
       name,
       slug,
@@ -204,6 +229,7 @@ router.post('/', protect, admin, async (req, res) => {
       specs,
       isFeatured,
       onSale,
+      isActive,
       keyFeatures,
       sku,
       brand,
@@ -213,6 +239,8 @@ router.post('/', protect, admin, async (req, res) => {
       featureHeadline,
       featureSubtext,
       notes,
+      metaTitle,
+      metaDescription,
     });
 
     const createdProduct = await product.save();
@@ -228,7 +256,32 @@ router.post('/', protect, admin, async (req, res) => {
 // @access  Private/Admin
 router.put('/:id', protect, admin, async (req, res) => {
   try {
-    const { name, slug, description, price, originalPrice, category, subCategory, images, stock, specs, isFeatured, onSale, keyFeatures, sku, brand, variantGroup, variantLabel, categories, featureHeadline, featureSubtext, notes } = req.body;
+    const {
+      name,
+      slug,
+      description,
+      price,
+      originalPrice,
+      category,
+      subCategory,
+      images,
+      stock,
+      specs,
+      isFeatured,
+      onSale,
+      isActive,
+      keyFeatures,
+      sku,
+      brand,
+      variantGroup,
+      variantLabel,
+      categories,
+      featureHeadline,
+      featureSubtext,
+      notes,
+      metaTitle,
+      metaDescription,
+    } = req.body;
     const product = await Product.findById(req.params.id);
 
     if (product) {
@@ -244,6 +297,9 @@ router.put('/:id', protect, admin, async (req, res) => {
       product.specs = specs || product.specs;
       product.isFeatured = isFeatured !== undefined ? isFeatured : product.isFeatured;
       product.onSale = onSale !== undefined ? onSale : product.onSale;
+      if (typeof isActive === 'boolean') {
+        product.isActive = isActive;
+      }
       if (keyFeatures !== undefined) product.keyFeatures = keyFeatures;
       if (sku !== undefined) product.sku = sku;
       if (brand !== undefined) product.brand = brand;
@@ -253,6 +309,8 @@ router.put('/:id', protect, admin, async (req, res) => {
       if (featureHeadline !== undefined) product.featureHeadline = featureHeadline;
       if (featureSubtext !== undefined) product.featureSubtext = featureSubtext;
       if (notes !== undefined) product.notes = notes;
+      if (metaTitle !== undefined) product.metaTitle = metaTitle;
+      if (metaDescription !== undefined) product.metaDescription = metaDescription;
 
       const updatedProduct = await product.save();
       invalidateProductsCache();
@@ -279,6 +337,142 @@ router.delete('/:id', protect, admin, async (req, res) => {
     } else {
       res.status(404).json({ message: 'Product not found' });
     }
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// @desc    Bulk update product availability (isActive flag)
+// @route   PUT /api/products/bulk/availability
+// @access  Private/Admin
+router.put('/bulk/availability', protect, admin, async (req, res) => {
+  try {
+    const { productIds, isActive } = req.body;
+
+    if (!Array.isArray(productIds) || productIds.length === 0) {
+      return res.status(400).json({ message: 'productIds array is required' });
+    }
+
+    if (typeof isActive !== 'boolean') {
+      return res.status(400).json({ message: 'isActive boolean is required' });
+    }
+
+    const result = await Product.updateMany(
+      { _id: { $in: productIds } },
+      { $set: { isActive } }
+    );
+
+    invalidateProductsCache();
+
+    res.json({ matchedCount: result.matchedCount, modifiedCount: result.modifiedCount });
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+});
+
+// @desc    Bulk update product prices
+// @route   PUT /api/products/bulk/price
+// @access  Private/Admin
+router.put('/bulk/price', protect, admin, async (req, res) => {
+  try {
+    const { productIds, mode, value } = req.body;
+
+    if (!Array.isArray(productIds) || productIds.length === 0) {
+      return res.status(400).json({ message: 'productIds array is required' });
+    }
+
+    const numericValue = Number(value);
+    if (!Number.isFinite(numericValue) || numericValue === 0) {
+      return res.status(400).json({ message: 'A non-zero numeric value is required' });
+    }
+
+    if (!['increasePercent', 'decreasePercent'].includes(mode)) {
+      return res.status(400).json({ message: 'Invalid mode for bulk price update' });
+    }
+
+    const products = await Product.find({ _id: { $in: productIds } });
+
+    for (const product of products) {
+      if (typeof product.price !== 'number') continue;
+
+      const factor = numericValue / 100;
+      if (mode === 'increasePercent') {
+        product.price = Math.round(product.price * (1 + factor));
+      } else if (mode === 'decreasePercent') {
+        product.price = Math.round(product.price * (1 - factor));
+      }
+    }
+
+    const updatedProducts = await Promise.all(products.map((p) => p.save()));
+    invalidateProductsCache();
+
+    res.json({ updatedCount: updatedProducts.length });
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+});
+
+// @desc    Export products as CSV
+// @route   GET /api/products/export
+// @access  Private/Admin
+router.get('/export', protect, admin, async (req, res) => {
+  try {
+    const products = await Product.find({}).sort({ createdAt: -1 });
+
+    const header = [
+      'Product ID',
+      'Name',
+      'Slug',
+      'Price',
+      'Original Price',
+      'Stock',
+      'Category',
+      'Subcategory',
+      'Brand',
+      'SKU',
+      'On Sale',
+      'Featured',
+      'Active',
+    ];
+
+    const escapeCsv = (value) => {
+      if (value === null || value === undefined) return '';
+      const str = String(value);
+      if (str.includes('"') || str.includes(',') || str.includes('\n')) {
+        return `"${str.replace(/"/g, '""')}"`;
+      }
+      return str;
+    };
+
+    const rows = products.map((product) => [
+      product._id,
+      product.name || '',
+      product.slug || '',
+      product.price != null ? product.price : '',
+      product.originalPrice != null ? product.originalPrice : '',
+      product.stock != null ? product.stock : '',
+      product.category || '',
+      product.subCategory || '',
+      product.brand || '',
+      product.sku || '',
+      product.onSale ? 'Yes' : 'No',
+      product.isFeatured ? 'Yes' : 'No',
+      product.isActive ? 'Yes' : 'No',
+    ]);
+
+    const csvLines = [
+      header.map(escapeCsv).join(','),
+      ...rows.map((row) => row.map(escapeCsv).join(',')),
+    ];
+
+    const csvContent = csvLines.join('\n');
+
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader(
+      'Content-Disposition',
+      'attachment; filename="products-export.csv"'
+    );
+    res.send(csvContent);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

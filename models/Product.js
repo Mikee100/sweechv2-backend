@@ -13,6 +13,8 @@ const productSchema = mongoose.Schema(
     stock: { type: Number, default: 0 },
     isFeatured: { type: Boolean, default: false },
     onSale: { type: Boolean, default: false },
+    // Whether the product is visible/available for purchase
+    isActive: { type: Boolean, default: true },
     keyFeatures: [{ type: String }],
     specs: [{ key: String, value: String }],
     sku: { type: String },
@@ -25,6 +27,9 @@ const productSchema = mongoose.Schema(
     featureHeadline: { type: String },
     featureSubtext: { type: String },
     notes: [{ type: String }],
+    // Basic SEO fields for product detail page
+    metaTitle: { type: String },
+    metaDescription: { type: String },
   },
   {
     timestamps: true,
