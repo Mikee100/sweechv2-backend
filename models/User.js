@@ -22,6 +22,21 @@ const userSchema = mongoose.Schema(
         ref: 'Product',
       },
     ],
+    cartItems: [
+      {
+        product: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: 'Product',
+          required: true,
+        },
+        qty: { type: Number, required: true, min: 1 },
+        // Optional denormalized fields for quicker reads / analytics
+        priceAtAdd: { type: Number },
+        nameAtAdd: { type: String },
+        imageAtAdd: { type: String },
+        slugAtAdd: { type: String },
+      },
+    ],
   },
   {
     timestamps: true,

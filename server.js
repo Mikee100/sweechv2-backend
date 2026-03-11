@@ -1,6 +1,7 @@
 const express = require('express');
 const dotenv = require('dotenv');
 const cors = require('cors');
+const cookieParser = require('cookie-parser');
 const connectDB = require('./config/db');
 
 dotenv.config();
@@ -16,11 +17,18 @@ const uploadRoutes = require('./routes/uploadRoutes');
 const analyticsRoutes = require('./routes/analyticsRoutes');
 const siteConfigRoutes = require('./routes/siteConfigRoutes');
 const discountRoutes = require('./routes/discountRoutes');
+const seoRoutes = require('./routes/seoRoutes');
 const path = require('path');
 
 const app = express();
 
-app.use(cors());
+app.use(
+  cors({
+    origin: process.env.CLIENT_ORIGIN || 'http://localhost:5173',
+    credentials: true,
+  })
+);
+app.use(cookieParser());
 app.use(express.json());
 
 app.use('/api/products', productRoutes);
@@ -30,6 +38,7 @@ app.use('/api/upload', uploadRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/site-config', siteConfigRoutes);
 app.use('/api/discounts', discountRoutes);
+app.use('/', seoRoutes);
 
 app.use('/uploads', express.static(path.join(__dirname, '/uploads')));
 
