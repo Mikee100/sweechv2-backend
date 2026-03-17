@@ -41,6 +41,13 @@ app.use(
   })
 );
 app.use(cookieParser());
+
+// Debug logging for cookies and auth headers
+app.use((req, res, next) => {
+  console.log('Cookies:', req.cookies);
+  console.log('Authorization header:', req.headers.authorization);
+  next();
+});
 app.use(express.json());
 
 app.use('/api/products', productRoutes);
