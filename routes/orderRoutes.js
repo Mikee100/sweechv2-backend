@@ -181,7 +181,7 @@ router.post('/', protect, async (req, res) => {
           return;
         }
 
-        const subject = `New order ${createdOrder._id}`;
+        const subject = `CaseProz - New Order ${createdOrder._id}`;
 
         const itemsText = createdOrder.orderItems
           .map((item) => `${item.qty} x ${item.name} ($${item.price})`)
@@ -191,22 +191,40 @@ router.post('/', protect, async (req, res) => {
           ? `${createdOrder.shippingAddress.address}, ${createdOrder.shippingAddress.city}, ${createdOrder.shippingAddress.postalCode}, ${createdOrder.shippingAddress.country}`
           : 'N/A';
 
-        const text = [
+        const textLines = [
           `A new order has been placed on CaseProz.`,
           ``,
           `Order ID: ${createdOrder._id}`,
           user ? `Customer: ${user.name} <${user.email}>` : '',
           ``,
+          `Payment method: ${createdOrder.paymentMethod || 'N/A'}`,
+          `Order status: ${createdOrder.status || 'pending'}`,
+          ``,
           `Items:`,
           itemsText,
           ``,
-          `Total: $${createdOrder.totalPrice}`,
+          `Items total: KSh ${createdOrder.itemsPrice}`,
+          `Shipping: KSh ${createdOrder.shippingPrice}`,
+          `Tax: KSh ${createdOrder.taxPrice}`,
+        ];
+
+        if (createdOrder.discountAmount && createdOrder.discountAmount > 0) {
+          textLines.push(
+            `Discount${createdOrder.discountCode ? ` (${createdOrder.discountCode})` : ''}: -KSh ${createdOrder.discountAmount}`
+          );
+        }
+
+        textLines.push(
+          `Total: KSh ${createdOrder.totalPrice}`,
           ``,
           `Shipping address:`,
           shippingText,
-        ]
-          .filter(Boolean)
-          .join('\n');
+          ``,
+          `Thank you for shopping with CaseProz.`,
+          `If you have any questions about this order, reply to this email or contact our support team.`
+        );
+
+        const text = textLines.filter(Boolean).join('\n');
 
         const itemsRowsHtml = createdOrder.orderItems
           .map(
@@ -214,7 +232,7 @@ router.post('/', protect, async (req, res) => {
               <tr>
                 <td style="padding: 8px 12px; border-bottom: 1px solid #eee;">${item.name}</td>
                 <td style="padding: 8px 12px; border-bottom: 1px solid #eee; text-align: center;">${item.qty}</td>
-                <td style="padding: 8px 12px; border-bottom: 1px solid #eee; text-align: right;">$${item.price}</td>
+                <td style="padding: 8px 12px; border-bottom: 1px solid #eee; text-align: right;">KSh ${item.price.toLocaleString()}</td>
               </tr>`
           )
           .join('');
@@ -229,16 +247,21 @@ router.post('/', protect, async (req, res) => {
 
               <div style="padding: 20px 24px;">
                 <p style="margin: 0 0 12px; font-size: 14px; color: #111827;">
-                  A new order has been placed on <strong>CaseProz</strong>.
+                  Thank you for your purchase from <strong>CaseProz</strong>. Your order details are below.
                 </p>
 
                 ${
                   user
-                    ? `<p style="margin: 0 0 16px; font-size: 14px; color: #4b5563;">
+                    ? `<p style="margin: 0 0 4px; font-size: 14px; color: #4b5563;">
                         <strong>Customer:</strong> ${user.name} &lt;${user.email}&gt;
                       </p>`
                     : ''
                 }
+
+                <p style="margin: 0 0 16px; font-size: 13px; color: #6b7280;">
+                  <strong>Payment method:</strong> ${createdOrder.paymentMethod || 'N/A'}<br/>
+                  <strong>Order status:</strong> ${createdOrder.status || 'pending'}
+                </p>
 
                 <h2 style="margin: 0 0 8px; font-size: 16px; color: #111827;">Order Items</h2>
                 <table style="width: 100%; border-collapse: collapse; margin-bottom: 16px; font-size: 13px; color: #111827;">
@@ -254,9 +277,29 @@ router.post('/', protect, async (req, res) => {
                   </tbody>
                 </table>
 
-                <p style="margin: 0 0 8px; font-size: 14px; color: #111827;">
-                  <strong>Total:</strong> $${createdOrder.totalPrice}
-                </p>
+                <div style="margin: 0 0 8px; font-size: 14px; color: #111827;">
+                  <p style="margin: 0 0 4px;">
+                    <strong>Items total:</strong> KSh ${createdOrder.itemsPrice.toLocaleString()}
+                  </p>
+                  <p style="margin: 0 0 4px;">
+                    <strong>Shipping:</strong> KSh ${createdOrder.shippingPrice.toLocaleString()}
+                  </p>
+                  <p style="margin: 0 0 4px;">
+                    <strong>Tax:</strong> KSh ${createdOrder.taxPrice.toLocaleString()}
+                  </p>
+                  ${
+                    createdOrder.discountAmount && createdOrder.discountAmount > 0
+                      ? `<p style="margin: 0 0 4px; color: #16a34a;">
+                          <strong>Discount${
+                            createdOrder.discountCode ? ` (${createdOrder.discountCode})` : ''
+                          }:</strong> -KSh ${createdOrder.discountAmount.toLocaleString()}
+                        </p>`
+                      : ''
+                  }
+                  <p style="margin: 4px 0 0; font-size: 15px;">
+                    <strong>Total:</strong> KSh ${createdOrder.totalPrice.toLocaleString()}
+                  </p>
+                </div>
 
                 <h3 style="margin: 16px 0 4px; font-size: 14px; color: #111827;">Shipping Address</h3>
                 <p style="margin: 0 0 4px; font-size: 13px; color: #4b5563;">
@@ -264,7 +307,7 @@ router.post('/', protect, async (req, res) => {
                 </p>
 
                 <p style="margin: 16px 0 0; font-size: 12px; color: #9ca3af;">
-                  You’re receiving this email because an order was placed on CaseProz.
+                  You’re receiving this email because an order was placed on CaseProz. If this wasn’t you or if you have any questions, please contact our support team.
                 </p>
               </div>
             </div>

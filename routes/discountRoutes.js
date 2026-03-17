@@ -127,8 +127,8 @@ router.delete('/:id', protect, admin, async (req, res) => {
 
 // @desc    Validate and compute discount for an order total
 // @route   POST /api/discounts/apply
-// @access  Private (checkout)
-router.post('/apply', protect, async (req, res) => {
+// @access  Public (no auth required)
+router.post('/apply', async (req, res) => {
   try {
     const { code, itemsTotal } = req.body;
 
