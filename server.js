@@ -22,9 +22,21 @@ const path = require('path');
 
 const app = express();
 
+const allowedOrigins = [
+  'https://caseproz.vercel.app',
+  'http://localhost:5173',
+];
 app.use(
   cors({
-    origin: process.env.CLIENT_ORIGIN || 'http://localhost:5173' || 'https://caseproz.vercel.app',
+    origin: function (origin, callback) {
+      // allow requests with no origin (like mobile apps, curl, etc.)
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      } else {
+        return callback(new Error('Not allowed by CORS'));
+      }
+    },
     credentials: true,
   })
 );
