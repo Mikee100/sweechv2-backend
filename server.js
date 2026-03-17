@@ -25,6 +25,7 @@ const app = express();
 const allowedOrigins = [
   'https://caseproz.vercel.app',
   'http://localhost:5173',
+  // Add your deployed frontend URL here for production CORS e.g. 'https://your-app.vercel.app'
 ];
 app.use(
   cors({
