@@ -13,12 +13,17 @@ const buildUserPayload = (user) => ({
   role: user.role || (user.isAdmin ? 'MANAGER' : 'CUSTOMER'),
 });
 
-const authCookieOptions = {
-  httpOnly: true,
-  secure: process.env.NODE_ENV === 'production',
-  sameSite: 'none',
-  maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+const getAuthCookieOptions = (req) => {
+  const isSecure = req.secure || req.get('x-forwarded-proto') === 'https' || process.env.NODE_ENV === 'production';
+  return {
+    httpOnly: true,
+    secure: isSecure,
+    sameSite: isSecure ? 'none' : 'lax',
+    maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+    path: '/',
+  };
 };
+
 
 // @desc    Auth user & get token
 // @route   POST /api/users/login
@@ -31,7 +36,7 @@ router.post('/login', async (req, res) => {
   if (user && (await user.matchPassword(password))) {
     const token = generateToken(user._id);
     res
-      .cookie('authToken', token, { ...authCookieOptions, path: '/' })
+      .cookie('authToken', token, getAuthCookieOptions(req))
       .json(buildUserPayload(user));
   } else {
     res.status(401).json({ message: 'Invalid email or password' });
@@ -61,7 +66,7 @@ router.post('/', async (req, res) => {
     const token = generateToken(user._id);
     res
       .status(201)
-      .cookie('authToken', token, { ...authCookieOptions, path: '/' })
+      .cookie('authToken', token, getAuthCookieOptions(req))
       .json(buildUserPayload(user));
   } else {
     res.status(400).json({ message: 'Invalid user data' });
@@ -102,7 +107,7 @@ router.put('/profile', protect, async (req, res) => {
   const token = generateToken(updatedUser._id);
 
   res
-    .cookie('authToken', token, { ...authCookieOptions, path: '/' })
+    .cookie('authToken', token, getAuthCookieOptions(req))
     .json(buildUserPayload(updatedUser));
 });
 
@@ -161,7 +166,7 @@ router.get('/cart', protect, async (req, res) => {
 // @access  Public (just clears cookie)
 router.post('/logout', (req, res) => {
   res
-    .clearCookie('authToken', { ...authCookieOptions, path: '/' })
+    .clearCookie('authToken', getAuthCookieOptions(req))
     .status(200)
     .json({ message: 'Logged out' });
 });

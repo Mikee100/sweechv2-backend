@@ -22,10 +22,13 @@ const path = require('path');
 
 const app = express();
 
+// Trust the first proxy (e.g., Vercel, Heroku, Render) to correctly identify HTTPS
+app.set('trust proxy', 1);
+
 const allowedOrigins = [
+
   'https://caseproz.vercel.app',
-  'http://localhost:5173',
-  // Add your deployed frontend URL here for production CORS e.g. 'https://your-app.vercel.app'
+  'http://localhost:5173'
 ];
 app.use(
   cors({
