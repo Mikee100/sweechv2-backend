@@ -22,8 +22,8 @@ const path = require('path');
 
 const app = express();
 
-// Trust the first proxy (e.g., Vercel, Heroku, Render) to correctly identify HTTPS
-app.set('trust proxy', 1);
+// Trust all proxy layers on Render/Vercel to correctly identify HTTPS
+app.set('trust proxy', true);
 
 const allowedOrigins = [
 

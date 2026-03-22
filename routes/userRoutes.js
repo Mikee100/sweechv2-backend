@@ -14,7 +14,10 @@ const buildUserPayload = (user) => ({
 });
 
 const getAuthCookieOptions = (req) => {
-  const isSecure = req.secure || req.get('x-forwarded-proto') === 'https' || process.env.NODE_ENV === 'production';
+  const host = req.get('host') || '';
+  const isLocalhost = host.includes('localhost') || host.includes('127.0.0.1');
+  const isSecure = !isLocalhost || req.secure || req.get('x-forwarded-proto') === 'https' || process.env.NODE_ENV === 'production';
+
   return {
     httpOnly: true,
     secure: isSecure,
@@ -23,6 +26,7 @@ const getAuthCookieOptions = (req) => {
     path: '/',
   };
 };
+
 
 
 // @desc    Auth user & get token
