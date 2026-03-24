@@ -5,6 +5,7 @@ const User = require('../models/User');
 const Product = require('../models/Product');
 const { protect, admin } = require('../middleware/authMiddleware');
 const sendEmail = require('../utils/sendEmail');
+const { generateOrderConfirmationEmail } = require('../utils/emailTemplates');
 
 const VALID_STATUSES = [
   'pending',
@@ -181,10 +182,30 @@ router.post('/', protect, async (req, res) => {
           return;
         }
 
+        // Fetch related products for the email recommendations
+        let recommendedProducts = [];
+        try {
+          const firstItem = createdOrder.orderItems[0];
+          if (firstItem) {
+            const product = await Product.findById(firstItem.product);
+            if (product) {
+              recommendedProducts = await Product.find({
+                category: product.category,
+                _id: { $nin: [product._id, ...createdOrder.orderItems.map(i => i.product)] },
+                isActive: true
+              })
+              .limit(3)
+              .select('name price images slug');
+            }
+          }
+        } catch (recError) {
+          console.error('Failed to fetch recommended products:', recError);
+        }
+
         const subject = `CaseProz - New Order ${createdOrder._id}`;
 
         const itemsText = createdOrder.orderItems
-          .map((item) => `${item.qty} x ${item.name} ($${item.price})`)
+          .map((item) => `${item.qty} x ${item.name} (KSh ${item.price.toLocaleString()})`)
           .join('\n');
 
         const shippingText = createdOrder.shippingAddress
@@ -192,7 +213,7 @@ router.post('/', protect, async (req, res) => {
           : 'N/A';
 
         const textLines = [
-          `A new order has been placed on CaseProz.`,
+          `Thank you for your purchase from CaseProz!`,
           ``,
           `Order ID: ${createdOrder._id}`,
           user ? `Customer: ${user.name} <${user.email}>` : '',
@@ -203,19 +224,19 @@ router.post('/', protect, async (req, res) => {
           `Items:`,
           itemsText,
           ``,
-          `Items total: KSh ${createdOrder.itemsPrice}`,
-          `Shipping: KSh ${createdOrder.shippingPrice}`,
-          `Tax: KSh ${createdOrder.taxPrice}`,
+          `Items total: KSh ${createdOrder.itemsPrice.toLocaleString()}`,
+          `Shipping: KSh ${createdOrder.shippingPrice.toLocaleString()}`,
+          `Tax: KSh ${createdOrder.taxPrice.toLocaleString()}`,
         ];
 
         if (createdOrder.discountAmount && createdOrder.discountAmount > 0) {
           textLines.push(
-            `Discount${createdOrder.discountCode ? ` (${createdOrder.discountCode})` : ''}: -KSh ${createdOrder.discountAmount}`
+            `Discount${createdOrder.discountCode ? ` (${createdOrder.discountCode})` : ''}: -KSh ${createdOrder.discountAmount.toLocaleString()}`
           );
         }
 
         textLines.push(
-          `Total: KSh ${createdOrder.totalPrice}`,
+          `Total: KSh ${createdOrder.totalPrice.toLocaleString()}`,
           ``,
           `Shipping address:`,
           shippingText,
@@ -226,93 +247,7 @@ router.post('/', protect, async (req, res) => {
 
         const text = textLines.filter(Boolean).join('\n');
 
-        const itemsRowsHtml = createdOrder.orderItems
-          .map(
-            (item) => `
-              <tr>
-                <td style="padding: 8px 12px; border-bottom: 1px solid #eee;">${item.name}</td>
-                <td style="padding: 8px 12px; border-bottom: 1px solid #eee; text-align: center;">${item.qty}</td>
-                <td style="padding: 8px 12px; border-bottom: 1px solid #eee; text-align: right;">KSh ${item.price.toLocaleString()}</td>
-              </tr>`
-          )
-          .join('');
-
-        const html = `
-          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; background-color: #f5f5f5; padding: 24px;">
-            <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; border: 1px solid #e5e5e5;">
-              <div style="background: linear-gradient(135deg, #111827, #1f2937); padding: 16px 24px;">
-                <h1 style="margin: 0; font-size: 20px; color: #ffffff;">CaseProz - New Order</h1>
-                <p style="margin: 4px 0 0; font-size: 13px; color: #d1d5db;">Order ID: ${createdOrder._id}</p>
-              </div>
-
-              <div style="padding: 20px 24px;">
-                <p style="margin: 0 0 12px; font-size: 14px; color: #111827;">
-                  Thank you for your purchase from <strong>CaseProz</strong>. Your order details are below.
-                </p>
-
-                ${
-                  user
-                    ? `<p style="margin: 0 0 4px; font-size: 14px; color: #4b5563;">
-                        <strong>Customer:</strong> ${user.name} &lt;${user.email}&gt;
-                      </p>`
-                    : ''
-                }
-
-                <p style="margin: 0 0 16px; font-size: 13px; color: #6b7280;">
-                  <strong>Payment method:</strong> ${createdOrder.paymentMethod || 'N/A'}<br/>
-                  <strong>Order status:</strong> ${createdOrder.status || 'pending'}
-                </p>
-
-                <h2 style="margin: 0 0 8px; font-size: 16px; color: #111827;">Order Items</h2>
-                <table style="width: 100%; border-collapse: collapse; margin-bottom: 16px; font-size: 13px; color: #111827;">
-                  <thead>
-                    <tr>
-                      <th style="text-align: left; padding: 8px 12px; border-bottom: 1px solid #e5e7eb;">Item</th>
-                      <th style="text-align: center; padding: 8px 12px; border-bottom: 1px solid #e5e7eb;">Qty</th>
-                      <th style="text-align: right; padding: 8px 12px; border-bottom: 1px solid #e5e7eb;">Price</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    ${itemsRowsHtml}
-                  </tbody>
-                </table>
-
-                <div style="margin: 0 0 8px; font-size: 14px; color: #111827;">
-                  <p style="margin: 0 0 4px;">
-                    <strong>Items total:</strong> KSh ${createdOrder.itemsPrice.toLocaleString()}
-                  </p>
-                  <p style="margin: 0 0 4px;">
-                    <strong>Shipping:</strong> KSh ${createdOrder.shippingPrice.toLocaleString()}
-                  </p>
-                  <p style="margin: 0 0 4px;">
-                    <strong>Tax:</strong> KSh ${createdOrder.taxPrice.toLocaleString()}
-                  </p>
-                  ${
-                    createdOrder.discountAmount && createdOrder.discountAmount > 0
-                      ? `<p style="margin: 0 0 4px; color: #16a34a;">
-                          <strong>Discount${
-                            createdOrder.discountCode ? ` (${createdOrder.discountCode})` : ''
-                          }:</strong> -KSh ${createdOrder.discountAmount.toLocaleString()}
-                        </p>`
-                      : ''
-                  }
-                  <p style="margin: 4px 0 0; font-size: 15px;">
-                    <strong>Total:</strong> KSh ${createdOrder.totalPrice.toLocaleString()}
-                  </p>
-                </div>
-
-                <h3 style="margin: 16px 0 4px; font-size: 14px; color: #111827;">Shipping Address</h3>
-                <p style="margin: 0 0 4px; font-size: 13px; color: #4b5563;">
-                  ${shippingText}
-                </p>
-
-                <p style="margin: 16px 0 0; font-size: 12px; color: #9ca3af;">
-                  You’re receiving this email because an order was placed on CaseProz. If this wasn’t you or if you have any questions, please contact our support team.
-                </p>
-              </div>
-            </div>
-          </div>
-        `;
+        const html = generateOrderConfirmationEmail(createdOrder, user, recommendedProducts);
 
         await sendEmail({
           to: recipients,
@@ -341,7 +276,7 @@ router.get('/myorders', protect, async (req, res) => {
 // @route   GET /api/orders/:id
 // @access  Private
 router.get('/:id', protect, async (req, res) => {
-  const order = await Order.findById(req.params.id).populate('user', 'name email');
+  const order = await Order.findById(req.params.id).populate('user', 'name email phone');
 
   if (order) {
     res.json(order);

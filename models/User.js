@@ -37,6 +37,12 @@ const userSchema = mongoose.Schema(
         slugAtAdd: { type: String },
       },
     ],
+    // Shipping Information
+    phone: { type: String },
+    address: { type: String },
+    city: { type: String },
+    postalCode: { type: String },
+    country: { type: String, default: 'Kenya' },
   },
   {
     timestamps: true,

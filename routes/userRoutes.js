@@ -11,6 +11,11 @@ const buildUserPayload = (user) => ({
   email: user.email,
   isAdmin: user.isAdmin,
   role: user.role || (user.isAdmin ? 'MANAGER' : 'CUSTOMER'),
+  phone: user.phone || '',
+  address: user.address || '',
+  city: user.city || '',
+  postalCode: user.postalCode || '',
+  country: user.country || 'Kenya',
 });
 
 const getAuthCookieOptions = (req) => {
@@ -41,7 +46,10 @@ router.post('/login', async (req, res) => {
     const token = generateToken(user._id);
     res
       .cookie('authToken', token, getAuthCookieOptions(req))
-      .json(buildUserPayload(user));
+      .json({
+        ...buildUserPayload(user),
+        token,
+      });
   } else {
     res.status(401).json({ message: 'Invalid email or password' });
   }
@@ -71,7 +79,10 @@ router.post('/', async (req, res) => {
     res
       .status(201)
       .cookie('authToken', token, getAuthCookieOptions(req))
-      .json(buildUserPayload(user));
+      .json({
+        ...buildUserPayload(user),
+        token,
+      });
   } else {
     res.status(400).json({ message: 'Invalid user data' });
   }
@@ -107,12 +118,22 @@ router.put('/profile', protect, async (req, res) => {
     user.password = req.body.password;
   }
 
+  // Shipping information
+  user.phone = req.body.phone !== undefined ? req.body.phone : user.phone;
+  user.address = req.body.address !== undefined ? req.body.address : user.address;
+  user.city = req.body.city !== undefined ? req.body.city : user.city;
+  user.postalCode = req.body.postalCode !== undefined ? req.body.postalCode : user.postalCode;
+  user.country = req.body.country !== undefined ? req.body.country : user.country;
+
   const updatedUser = await user.save();
   const token = generateToken(updatedUser._id);
 
   res
     .cookie('authToken', token, getAuthCookieOptions(req))
-    .json(buildUserPayload(updatedUser));
+    .json({
+      ...buildUserPayload(updatedUser),
+      token,
+    });
 });
 
 // @desc    Get logged in user's favourite products
@@ -374,6 +395,13 @@ router.put('/:id', protect, admin, async (req, res) => {
       user.tags = tags;
     }
 
+    // Shipping information
+    user.phone = req.body.phone !== undefined ? req.body.phone : user.phone;
+    user.address = req.body.address !== undefined ? req.body.address : user.address;
+    user.city = req.body.city !== undefined ? req.body.city : user.city;
+    user.postalCode = req.body.postalCode !== undefined ? req.body.postalCode : user.postalCode;
+    user.country = req.body.country !== undefined ? req.body.country : user.country;
+
     const updatedUser = await user.save();
 
     res.json({
@@ -384,6 +412,11 @@ router.put('/:id', protect, admin, async (req, res) => {
       role: updatedUser.role || (updatedUser.isAdmin ? 'MANAGER' : 'CUSTOMER'),
       notes: updatedUser.notes || '',
       tags: updatedUser.tags || [],
+      phone: updatedUser.phone || '',
+      address: updatedUser.address || '',
+      city: updatedUser.city || '',
+      postalCode: updatedUser.postalCode || '',
+      country: updatedUser.country || 'Kenya',
     });
   } else {
     res.status(404).json({ message: 'User not found' });
