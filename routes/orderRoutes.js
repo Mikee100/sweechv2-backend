@@ -3,9 +3,12 @@ const router = express.Router();
 const Order = require('../models/Order');
 const User = require('../models/User');
 const Product = require('../models/Product');
+const DiscountCode = require('../models/DiscountCode');
+const SiteConfig = require('../models/SiteConfig');
 const { protect, admin } = require('../middleware/authMiddleware');
 const sendEmail = require('../utils/sendEmail');
 const { generateOrderConfirmationEmail } = require('../utils/emailTemplates');
+const { SHIPPING_ZONES } = require('../utils/shippingZones');
 
 const VALID_STATUSES = [
   'pending',
@@ -92,97 +95,120 @@ router.post('/', protect, async (req, res) => {
     orderItems,
     shippingAddress,
     paymentMethod,
-    itemsPrice,
-    taxPrice,
-    shippingPrice,
-    totalPrice,
-    discountCode,
-    discountAmount,
+    discountCode: rawDiscountCode,
+    shippingZoneId,
   } = req.body;
 
-  if (orderItems && orderItems.length === 0) {
-    res.status(400).json({ message: 'No order items' });
-    return;
-  } else {
-    // Check stock availability for each item before creating the order
-    try {
-      for (const item of orderItems) {
-        const product = await Product.findById(item.product);
+  if (!orderItems || orderItems.length === 0) {
+    return res.status(400).json({ message: 'No order items' });
+  }
 
-        if (!product) {
-          res.status(404).json({ message: `Product not found for item "${item.name}"` });
-          return;
-        }
+  try {
+    // ── 1. Validate stock & build trusted order items with DB prices ──
+    const trustedItems = [];
+    for (const item of orderItems) {
+      const product = await Product.findById(item.product);
 
-        if (product.stock < item.qty) {
-          res.status(400).json({
-            message: `Not enough stock for "${product.name}". Available: ${product.stock}, requested: ${item.qty}`,
-          });
-          return;
-        }
+      if (!product) {
+        return res.status(404).json({ message: `Product not found for item "${item.name}"` });
+      }
+      if (!product.isActive) {
+        return res.status(400).json({ message: `"${product.name}" is no longer available.` });
+      }
+      if (product.stock < item.qty) {
+        return res.status(400).json({
+          message: `Not enough stock for "${product.name}". Available: ${product.stock}, requested: ${item.qty}`,
+        });
       }
 
-      // All items are available; decrement stock
-      for (const item of orderItems) {
-        const product = await Product.findById(item.product);
-        product.stock -= item.qty;
-        await product.save();
-      }
-    } catch (stockError) {
-      console.error('Error validating/updating stock for order:', stockError);
-      res.status(500).json({ message: 'Error validating product stock' });
-      return;
+      trustedItems.push({
+        product: product._id,
+        name: product.name,
+        image: product.images && product.images[0] ? product.images[0] : '',
+        qty: item.qty,
+        // Use the real DB price — never trust client price
+        price: product.price,
+      });
     }
 
+    // ── 2. Calculate itemsPrice from trusted DB prices ──
+    const itemsPrice = trustedItems.reduce((sum, item) => sum + item.price * item.qty, 0);
+
+    // ── 3. Resolve shipping price from the zone ID ──
+    const zone = SHIPPING_ZONES.find((z) => z.id === shippingZoneId);
+    const shippingPrice = zone ? zone.price : 500; // fallback to 500 if unknown zone
+
+    // ── 4. Fetch tax rate from SiteConfig ──
+    let taxRate = 0.16; // default 16% VAT
+    try {
+      const siteConfig = await SiteConfig.getSingleton();
+      if (typeof siteConfig.taxRate === 'number') {
+        taxRate = siteConfig.taxRate;
+      }
+    } catch (_) {
+      // ignore – use default
+    }
+    const taxPrice = Math.round(itemsPrice * taxRate);
+
+    // ── 5. Validate discount code (server-side) ──
+    let discountAmount = 0;
+    let discountCodeSaved = null;
+    if (rawDiscountCode) {
+      const normalisedCode = String(rawDiscountCode).trim().toUpperCase();
+      const discount = await DiscountCode.findOne({ code: normalisedCode });
+      if (discount && discount.isCurrentlyValid(itemsPrice)) {
+        discountAmount = discount.computeDiscount(itemsPrice);
+        discountCodeSaved = normalisedCode;
+        // Increment usage counter
+        discount.timesUsed = (discount.timesUsed || 0) + 1;
+        await discount.save();
+      }
+    }
+
+    // ── 6. Compute authoritative totalPrice ──
+    const totalPrice = Math.max(0, itemsPrice + taxPrice + shippingPrice - discountAmount);
+
+    // ── 7. Decrement stock ──
+    for (const item of trustedItems) {
+      await Product.findByIdAndUpdate(item.product, { $inc: { stock: -item.qty } });
+    }
+
+    // ── 8. Create the order ──
     const order = new Order({
-      orderItems,
+      orderItems: trustedItems,
       user: req.user._id,
       shippingAddress,
       paymentMethod,
       status: 'pending',
-      statusHistory: [
-        {
-          status: 'pending',
-          note: 'Order placed',
-        },
-      ],
+      statusHistory: [{ status: 'pending', note: 'Order placed' }],
       itemsPrice,
       taxPrice,
       shippingPrice,
       totalPrice,
-      discountCode,
+      discountCode: discountCodeSaved,
       discountAmount,
     });
 
     const createdOrder = await order.save();
 
-    // Send order confirmation emails (non-blocking)
+    // ── 9. Send confirmation emails (non-blocking) ──
     (async () => {
       try {
         const user = req.user;
         const admins = await User.find({ isAdmin: true }).select('email name');
-
-        const adminEmails = admins.map((admin) => admin.email).filter(Boolean);
+        const adminEmails = admins.map((a) => a.email).filter(Boolean);
         const customerEmail = user && user.email ? user.email : null;
         const envAdminEmail = process.env.ADMIN_ORDER_EMAIL;
 
         const recipientSet = new Set();
-        const addRecipient = (email) => {
-          if (!email) return;
-          recipientSet.add(email.toLowerCase());
-        };
-
+        const addRecipient = (email) => { if (email) recipientSet.add(email.toLowerCase()); };
         addRecipient(envAdminEmail);
         adminEmails.forEach(addRecipient);
         addRecipient(customerEmail);
 
         const recipients = Array.from(recipientSet);
+        if (recipients.length === 0) return;
 
-        if (recipients.length === 0) {
-          return;
-        }
-
-        // Fetch related products for the email recommendations
         let recommendedProducts = [];
         try {
           const firstItem = createdOrder.orderItems[0];
@@ -191,11 +217,9 @@ router.post('/', protect, async (req, res) => {
             if (product) {
               recommendedProducts = await Product.find({
                 category: product.category,
-                _id: { $nin: [product._id, ...createdOrder.orderItems.map(i => i.product)] },
-                isActive: true
-              })
-              .limit(3)
-              .select('name price images slug');
+                _id: { $nin: [product._id, ...createdOrder.orderItems.map((i) => i.product)] },
+                isActive: true,
+              }).limit(3).select('name price images slug');
             }
           }
         } catch (recError) {
@@ -203,11 +227,9 @@ router.post('/', protect, async (req, res) => {
         }
 
         const subject = `CaseProz - New Order ${createdOrder._id}`;
-
         const itemsText = createdOrder.orderItems
           .map((item) => `${item.qty} x ${item.name} (KSh ${item.price.toLocaleString()})`)
           .join('\n');
-
         const shippingText = createdOrder.shippingAddress
           ? `${createdOrder.shippingAddress.address}, ${createdOrder.shippingAddress.city}, ${createdOrder.shippingAddress.postalCode}, ${createdOrder.shippingAddress.country}`
           : 'N/A';
@@ -246,23 +268,21 @@ router.post('/', protect, async (req, res) => {
         );
 
         const text = textLines.filter(Boolean).join('\n');
-
         const html = generateOrderConfirmationEmail(createdOrder, user, recommendedProducts);
 
-        await sendEmail({
-          to: recipients,
-          subject,
-          text,
-          html,
-        });
+        await sendEmail({ to: recipients, subject, text, html });
       } catch (error) {
         console.error('Failed to send order emails:', error.message || error);
       }
     })();
 
     res.status(201).json(createdOrder);
+  } catch (err) {
+    console.error('Error creating order:', err);
+    res.status(500).json({ message: 'Error creating order' });
   }
 });
+
 
 // @desc    Get logged in user orders
 // @route   GET /api/orders/myorders

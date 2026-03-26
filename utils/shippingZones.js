@@ -1,0 +1,27 @@
+const SHIPPING_ZONES = [
+  { id: 'cbd-ngara-pangani', label: 'CBD, Ngara, Pangani', price: 300 },
+  { id: 'westlands-parklands-highridge-citypark', label: 'Westlands, Parklands, Highridge, City Park', price: 200 },
+  { id: 'brookside-springvalley-peponi', label: 'Brookside, Spring Valley, Peponi', price: 300 },
+  { id: 'hurlingham-milimani-upperhill', label: 'Hurlingham, Milimani, Upper Hill', price: 300 },
+  { id: 'riverside-arboretum', label: 'Riverside Drive, Arboretum', price: 300 },
+  { id: 'kileleshwa-lavington-kilimani', label: 'Kileleshwa, Lavington, Kilimani', price: 300 },
+  { id: 'dagoretti-ngongroad-riara-naivasha', label: 'Dagoretti, Ngong Road, Riara Road, Naivasha Road', price: 400 },
+  { id: 'muthaiga-gigiri-runda-nyari', label: 'Muthaiga, Gigiri, Runda, Nyari', price: 400 },
+  { id: 'kitusuru-kyuna-loresho-lowerkabetekangemi-mountainview', label: 'Kitusuru, Kyuna, Loresho, Lower Kabete, Kangemi, Mountain View', price: 400 },
+  { id: 'southc-southb-nairobiewest-makadara', label: 'South C, South B, Nairobi West, Makadara', price: 400 },
+  { id: 'trm-gardencity-kasarani-ruaraka-dandora', label: 'TRM, Garden City, Kasarani, Ruaraka, Dandora', price: 500 },
+  { id: 'huruma-mathare-eastleigh', label: 'Huruma, Mathare, Eastleigh', price: 400 },
+  { id: 'industrialarea-imaradaima-embakasi', label: 'Industrial Area, Imara Daima, Embakasi', price: 500 },
+  { id: 'umoja-buruburu-nyayo-donholm-fedha-komarock', label: 'Umoja, Buruburu, Nyayo Estate, Donholm, Fedha Estate, Komarock', price: 500 },
+  { id: 'langata-karen', label: 'Langata, Karen', price: 600 },
+  { id: 'ruaka-kiambu-thindigua-gachie', label: 'Ruaka, Kiambu, Thindigua, Gachie', price: 600 },
+  { id: 'ongata-rongai-kererapon', label: 'Ongata Rongai, Kererapon', price: 800 },
+  { id: 'ruiru-githurai-kahawa-utawala-juja-tatucity', label: 'Ruiru, Githurai, Kahawa, Utawala, Juja, Tatu City', price: 800 },
+  { id: 'syokimau-athiriver-mlolongo', label: 'Syokimau, Athi River, Mlolongo', price: 800 },
+  { id: 'kiserian-kitengela-ngongtown', label: 'Kiserian, Kitengela, Ngong Town', price: 1000 },
+  { id: 'jkia-kikuyu', label: 'JKIA Airport, Kikuyu', price: 700 },
+  { id: 'other-areas-courier', label: 'All Other Areas and Outside Nairobi - G4S, Wells Fargo, Easy Coach, Mash Courier', price: 600 },
+  { id: 'pickup-sweech-westlands', label: 'Pick up from Sweech Westlands Location', price: 0 },
+];
+
+module.exports = { SHIPPING_ZONES };

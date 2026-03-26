@@ -1,8 +1,8 @@
 const express = require('express');
 const dotenv = require('dotenv');
 const cors = require('cors');
-const cookieParser = require('cookie-parser');
 const connectDB = require('./config/db');
+
 
 dotenv.config();
 
@@ -44,17 +44,16 @@ app.use(
     credentials: true,
   })
 );
-app.use(cookieParser());
+app.use(express.json());
 
-// Debug logging for cookies and auth headers
+// Debug logging for auth headers
 app.use((req, res, next) => {
   if (process.env.NODE_ENV === 'development') {
-    console.log('Cookies:', req.cookies);
     console.log('Authorization header:', req.headers.authorization);
   }
   next();
 });
-app.use(express.json());
+
 
 app.use('/api/products', productRoutes);
 app.use('/api/users', userRoutes);

@@ -4,9 +4,14 @@ const bcrypt = require('bcryptjs');
 const userSchema = mongoose.Schema(
   {
     name: { type: String, required: true },
-    email: { type: String, required: true, unique: true },
-    password: { type: String, required: true },
+    email: { type: String, required: true, unique: true, lowercase: true, trim: true },
+    password: { type: String }, // Optional for Google Auth users
+    googleId: { type: String, unique: true, sparse: true }, // Sparse to allow nulls for standard users
     isAdmin: { type: Boolean, required: true, default: false },
+    isVerified: { type: Boolean, default: false },
+    verificationToken: { type: String },
+    resetPasswordToken: { type: String },
+    resetPasswordExpire: { type: Date },
     // Role-based access for admin area
     role: {
       type: String,
@@ -54,7 +59,7 @@ userSchema.methods.matchPassword = async function (enteredPassword) {
 };
 
 userSchema.pre('save', async function () {
-  if (!this.isModified('password')) {
+  if (!this.isModified('password') || !this.password) {
     return;
   }
 

@@ -176,6 +176,91 @@ const generateOrderConfirmationEmail = (order, user, recommendedProducts = []) =
   `;
 };
 
+const generateVerificationEmail = (user, verifyUrl) => {
+  return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <title>Verify your CaseProz Account</title>
+    </head>
+    <body style="margin: 0; padding: 0; font-family: 'Inter', -apple-system, sans-serif; background-color: #f7fafc; color: #2d3748;">
+      <table width="100%" border="0" cellspacing="0" cellpadding="0" style="padding: 20px 0;">
+        <tr>
+          <td align="center">
+            <table width="600" border="0" cellspacing="0" cellpadding="0" style="background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
+              <tr>
+                <td style="background: linear-gradient(135deg, #111827 0%, #1f2937 100%); padding: 40px 30px; text-align: center;">
+                  <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 800; letter-spacing: 2px;">CASEPROZ</h1>
+                  <p style="margin: 15px 0 0; color: #a0aec0; font-size: 14px; text-transform: uppercase;">Verify Your Email</p>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding: 40px 30px; text-align: center;">
+                  <h2 style="margin: 0 0 20px; font-size: 22px; color: #1a202c;">Welcome, ${user.name.split(' ')[0]}!</h2>
+                  <p style="margin: 0 0 25px; line-height: 1.6; color: #4a5568;">
+                    Thanks for registering with CaseProz. Please confirm your email address to activate your account and start shopping.
+                  </p>
+                  <a href="${verifyUrl}" style="display: inline-block; padding: 14px 30px; background-color: #e53e3e; color: #ffffff; text-decoration: none; font-weight: bold; border-radius: 8px; font-size: 16px;">VERIFY EMAIL</a>
+                  <p style="margin: 25px 0 0; font-size: 13px; color: #718096;">
+                    If the button doesn't work, copy and paste this link into your browser:<br>
+                    <a href="${verifyUrl}" style="color: #3182ce; word-break: break-all;">${verifyUrl}</a>
+                  </p>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </table>
+    </body>
+    </html>
+  `;
+};
+
+const generatePasswordResetEmail = (user, resetUrl) => {
+  return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <title>Reset your CaseProz Password</title>
+    </head>
+    <body style="margin: 0; padding: 0; font-family: 'Inter', -apple-system, sans-serif; background-color: #f7fafc; color: #2d3748;">
+      <table width="100%" border="0" cellspacing="0" cellpadding="0" style="padding: 20px 0;">
+        <tr>
+          <td align="center">
+            <table width="600" border="0" cellspacing="0" cellpadding="0" style="background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
+              <tr>
+                <td style="background: linear-gradient(135deg, #111827 0%, #1f2937 100%); padding: 40px 30px; text-align: center;">
+                  <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 800; letter-spacing: 2px;">CASEPROZ</h1>
+                  <p style="margin: 15px 0 0; color: #a0aec0; font-size: 14px; text-transform: uppercase;">Password Reset Request</p>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding: 40px 30px; text-align: center;">
+                  <h2 style="margin: 0 0 20px; font-size: 22px; color: #1a202c;">Hello, ${user.name.split(' ')[0]}</h2>
+                  <p style="margin: 0 0 25px; line-height: 1.6; color: #4a5568;">
+                    We received a request to reset the password for your CaseProz account. Click the button below to choose a new password. This link is only valid for 1 hour.
+                  </p>
+                  <a href="${resetUrl}" style="display: inline-block; padding: 14px 30px; background-color: #3182ce; color: #ffffff; text-decoration: none; font-weight: bold; border-radius: 8px; font-size: 16px;">RESET PASSWORD</a>
+                  <p style="margin: 25px 0 0; font-size: 13px; color: #718096;">
+                    If you did not request this, please ignore this email. Your password will remain unchanged.<br><br>
+                    Or copy and paste this link:<br>
+                    <a href="${resetUrl}" style="color: #3182ce; word-break: break-all;">${resetUrl}</a>
+                  </p>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </table>
+    </body>
+    </html>
+  `;
+};
+
 module.exports = {
   generateOrderConfirmationEmail,
+  generateVerificationEmail,
+  generatePasswordResetEmail,
 };

@@ -5,13 +5,8 @@ const protect = async (req, res, next) => {
   try {
     let token = null;
 
-    // Prefer HttpOnly auth cookie
-    if (req.cookies && req.cookies.authToken) {
-      token = req.cookies.authToken;
-    }
-
-    // Fallback: Authorization header (for any old clients/tools)
-    if (!token && req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
+    // Read token from Authorization header only (Cookie auth removed to prevent CSRF)
+    if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
       token = req.headers.authorization.split(' ')[1];
     }
 

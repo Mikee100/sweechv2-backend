@@ -1,9 +1,14 @@
 const express = require('express');
+const crypto = require('crypto');
+const { OAuth2Client } = require('google-auth-library');
 const router = express.Router();
 const User = require('../models/User');
 const Product = require('../models/Product');
 const generateToken = require('../utils/generateToken');
+const sendEmail = require('../utils/sendEmail');
+const { generateVerificationEmail, generatePasswordResetEmail } = require('../utils/emailTemplates');
 const { protect, admin } = require('../middleware/authMiddleware');
+const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 const buildUserPayload = (user) => ({
   _id: user._id,
@@ -18,40 +23,107 @@ const buildUserPayload = (user) => ({
   country: user.country || 'Kenya',
 });
 
-const getAuthCookieOptions = (req) => {
-  const host = req.get('host') || '';
-  const isLocalhost = host.includes('localhost') || host.includes('127.0.0.1');
-  const isSecure = !isLocalhost || req.secure || req.get('x-forwarded-proto') === 'https' || process.env.NODE_ENV === 'production';
-
-  return {
-    httpOnly: true,
-    secure: isSecure,
-    sameSite: isSecure ? 'none' : 'lax',
-    maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
-    path: '/',
-  };
-};
-
 
 
 // @desc    Auth user & get token
 // @route   POST /api/users/login
 // @access  Public
 router.post('/login', async (req, res) => {
-  const { email, password } = req.body;
+  const { password } = req.body;
+  const email = req.body.email ? req.body.email.toLowerCase().trim() : '';
 
   const user = await User.findOne({ email });
 
   if (user && (await user.matchPassword(password))) {
+    if (!user.isVerified) {
+      return res.status(401).json({ message: 'Please verify your email address to log in.', notVerified: true });
+    }
+
+    const isIncompleteProfile = !user.phone || !user.city;
     const token = generateToken(user._id);
-    res
-      .cookie('authToken', token, getAuthCookieOptions(req))
-      .json({
-        ...buildUserPayload(user),
-        token,
-      });
+    res.json({
+      ...buildUserPayload(user),
+      token,
+      isIncompleteProfile
+    });
   } else {
     res.status(401).json({ message: 'Invalid email or password' });
+  }
+});
+
+// @desc    Auth user with Google & get token
+// @route   POST /api/users/google
+// @access  Public
+router.post('/google', async (req, res) => {
+  const { idToken } = req.body;
+
+  try {
+    const ticket = await client.verifyIdToken({
+      idToken,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+
+    const payload = ticket.getPayload();
+    const { sub: googleId, name, picture } = payload;
+    const email = payload.email ? payload.email.toLowerCase().trim() : '';
+
+    let isNewUser = false;
+    let user = await User.findOne({ 
+      $or: [{ googleId }, { email }] 
+    });
+
+    if (user) {
+      // If user exists but doesn't have googleId linked (e.g. signed up with email before)
+      if (!user.googleId) {
+        user.googleId = googleId;
+        await user.save();
+      }
+
+      if (!user.isVerified) {
+        return res.status(401).json({ message: 'Please verify your email address to log in.', notVerified: true });
+      }
+
+      const isIncompleteProfile = !user.phone || !user.city;
+      const token = generateToken(user._id);
+      return res.json({
+        ...buildUserPayload(user),
+        token,
+        isNewUser: isIncompleteProfile,
+      });
+    }
+
+    // Create new user (unverified by default now)
+    user = await User.create({
+      name,
+      email,
+      googleId,
+      isVerified: false,
+    });
+
+    const verifyToken = crypto.randomBytes(20).toString('hex');
+    user.verificationToken = verifyToken;
+    await user.save();
+
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    const verifyUrl = `${frontendUrl}/verify/${verifyToken}`;
+    const message = generateVerificationEmail(user, verifyUrl);
+
+    try {
+      await sendEmail({
+        to: user.email,
+        subject: 'Verify your CaseProz Account',
+        html: message,
+      });
+      return res.status(201).json({ message: 'Registration successful! Please check your email to verify your account.', success: true });
+    } catch (error) {
+      console.error(error);
+      user.verificationToken = undefined;
+      await user.save();
+      return res.status(500).json({ message: 'Account created but verification email could not be sent. Please contact support.' });
+    }
+  } catch (error) {
+    console.error('Google Auth Error:', error);
+    res.status(401).json({ message: 'Google authentication failed' });
   }
 });
 
@@ -59,7 +131,8 @@ router.post('/login', async (req, res) => {
 // @route   POST /api/users
 // @access  Public
 router.post('/', async (req, res) => {
-  const { name, email, password } = req.body;
+  const { name, password, phone, city, address } = req.body;
+  const email = req.body.email ? req.body.email.toLowerCase().trim() : '';
 
   const userExists = await User.findOne({ email });
 
@@ -72,20 +145,121 @@ router.post('/', async (req, res) => {
     name,
     email,
     password,
+    phone,
+    city,
+    address,
   });
 
   if (user) {
-    const token = generateToken(user._id);
-    res
-      .status(201)
-      .cookie('authToken', token, getAuthCookieOptions(req))
-      .json({
-        ...buildUserPayload(user),
-        token,
+    const verifyToken = crypto.randomBytes(20).toString('hex');
+    user.verificationToken = verifyToken;
+    await user.save();
+
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    const verifyUrl = `${frontendUrl}/verify/${verifyToken}`;
+    const message = generateVerificationEmail(user, verifyUrl);
+
+    try {
+      await sendEmail({
+        to: user.email,
+        subject: 'Verify your CaseProz Account',
+        html: message,
       });
+      res.status(201).json({ message: 'Registration successful! Please check your email to verify your account.', success: true });
+    } catch (error) {
+      console.error(error);
+      user.verificationToken = undefined;
+      await user.save();
+      res.status(500).json({ message: 'Account created but verification email could not be sent. Please contact support.' });
+    }
   } else {
     res.status(400).json({ message: 'Invalid user data' });
   }
+});
+
+// @desc    Verify user email
+// @route   GET /api/users/verify/:token
+// @access  Public
+router.get('/verify/:token', async (req, res) => {
+  const user = await User.findOne({ verificationToken: req.params.token });
+  if (!user) {
+    // Try to find a user who is already verified (token may have been cleared)
+    const alreadyVerifiedUser = await User.findOne({ verificationToken: undefined, isVerified: true });
+    if (alreadyVerifiedUser) {
+      return res.status(200).json({ message: 'Account already verified. Please log in.' });
+    }
+    return res.status(400).json({ message: 'Invalid or expired verification token' });
+  }
+
+  user.isVerified = true;
+  user.verificationToken = undefined;
+  await user.save();
+
+  const token = generateToken(user._id);
+  res.json({
+    ...buildUserPayload(user),
+    token,
+    message: 'Email verified successfully',
+  });
+});
+
+// @desc    Forgot Password
+// @route   POST /api/users/forgot-password
+// @access  Public
+router.post('/forgot-password', async (req, res) => {
+  const email = req.body.email ? req.body.email.toLowerCase().trim() : '';
+  const user = await User.findOne({ email });
+  if (!user) return res.status(404).json({ message: 'There is no user with that email' });
+
+  const resetToken = crypto.randomBytes(20).toString('hex');
+  user.resetPasswordToken = resetToken;
+  user.resetPasswordExpire = Date.now() + 10 * 60 * 1000; // 10 minutes
+  await user.save();
+
+  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+  const resetUrl = `${frontendUrl}/reset-password/${resetToken}`;
+  const message = generatePasswordResetEmail(user, resetUrl);
+
+  try {
+    await sendEmail({
+      to: user.email,
+      subject: 'Password Reset Request',
+      html: message,
+    });
+    res.status(200).json({ message: 'Password reset email sent' });
+  } catch (error) {
+    console.error(error);
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpire = undefined;
+    await user.save();
+    res.status(500).json({ message: 'Email could not be sent' });
+  }
+});
+
+// @desc    Reset Password
+// @route   PUT /api/users/reset-password/:token
+// @access  Public
+router.put('/reset-password/:token', async (req, res) => {
+  const user = await User.findOne({
+    resetPasswordToken: req.params.token,
+    resetPasswordExpire: { $gt: Date.now() }
+  });
+
+  if (!user) {
+    return res.status(400).json({ message: 'Invalid or expired reset token' });
+  }
+
+  user.password = req.body.password;
+  user.resetPasswordToken = undefined;
+  user.resetPasswordExpire = undefined;
+  await user.save();
+
+  const token = generateToken(user._id);
+  res.json({
+    ...buildUserPayload(user),
+    token,
+    message: 'Password has been reset successfully',
+  });
 });
 
 // @desc    Get user profile
@@ -127,13 +301,10 @@ router.put('/profile', protect, async (req, res) => {
 
   const updatedUser = await user.save();
   const token = generateToken(updatedUser._id);
-
-  res
-    .cookie('authToken', token, getAuthCookieOptions(req))
-    .json({
-      ...buildUserPayload(updatedUser),
-      token,
-    });
+  res.json({
+    ...buildUserPayload(updatedUser),
+    token,
+  });
 });
 
 // @desc    Get logged in user's favourite products
@@ -190,10 +361,8 @@ router.get('/cart', protect, async (req, res) => {
 // @route   POST /api/users/logout
 // @access  Public (just clears cookie)
 router.post('/logout', (req, res) => {
-  res
-    .clearCookie('authToken', getAuthCookieOptions(req))
-    .status(200)
-    .json({ message: 'Logged out' });
+  // Token invalidation is handled client-side (localStorage cleared)
+  res.status(200).json({ message: 'Logged out' });
 });
 
 // @desc    Replace or merge logged in user's cart with provided items
